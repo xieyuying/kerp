@@ -1,7 +1,33 @@
+import { useEffect, useState } from "react";
 import PhoneFrame from "../components/PhoneFrame";
 import SectionCard from "../components/SectionCard";
+import { trpcClient } from "../lib/trpc";
 
 export default function HomePage() {
+  const [workerMessage, setWorkerMessage] = useState("正在请求 Worker...");
+  const [workerError, setWorkerError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function loadWorkerMessage() {
+    setIsLoading(true);
+    setWorkerError("");
+
+    try {
+      const data = await trpcClient.hello.query({ name: "yuying" });
+      setWorkerMessage(data.message);
+    } catch (error) {
+      setWorkerError("Worker 连接失败，请先运行 wrangler dev 或部署 Worker。");
+      setWorkerMessage("");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadWorkerMessage();
+  }, []);
+
   return (
     <PhoneFrame title="Fitness Home" subtitle="今天还有 2 组训练，保持节奏。" activeTab="home">
       <SectionCard className="bg-gradient-to-br from-amber-400/20 via-amber-200/5 to-cyan-300/10">
@@ -12,6 +38,26 @@ export default function HomePage() {
           <button className="rounded-xl bg-kerp-primary px-4 py-2 text-sm font-semibold text-slate-900">开始训练</button>
           <button className="rounded-xl border border-kerp-line px-4 py-2 text-sm text-kerp-text">查看计划</button>
         </div>
+      </SectionCard>
+
+      <SectionCard title="Worker + tRPC">
+        <p className="text-sm text-kerp-muted">这个区域会显示 Cloudflare Worker 返回的结果。</p>
+        <div className="mt-3 rounded-2xl border border-kerp-line bg-white/5 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-kerp-primary">API Result</p>
+          <p className="mt-2 font-display text-2xl text-kerp-text">
+            {workerError ? "请求失败" : workerMessage}
+          </p>
+          {workerError ? <p className="mt-2 text-sm text-rose-300">{workerError}</p> : null}
+        </div>
+        <button
+          className="mt-4 rounded-xl border border-kerp-line px-4 py-2 text-sm text-kerp-text disabled:opacity-50"
+          disabled={isLoading}
+          onClick={() => {
+            void loadWorkerMessage();
+          }}
+        >
+          {isLoading ? "请求中..." : "重新请求 Worker"}
+        </button>
       </SectionCard>
 
       <div className="grid grid-cols-2 gap-4">
